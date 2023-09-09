@@ -1,3 +1,4 @@
+import asana
 from asana.rest import ApiException
 from pprint import pprint
 import re
@@ -5,7 +6,6 @@ import util
 import logging
 import requests
 import json
-import asana
 
 
 TITLE_PREFIXES = {
@@ -144,7 +144,7 @@ class AsanaProject:
 
 
 class AsanaIssue:
-    def __init__(self, project, workspace rawissue):
+    def __init__(self, project, workspace, rawissue):
         self.project = project
         self.workspace = workspace
         self.rawissue = rawissue

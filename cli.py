@@ -5,7 +5,7 @@ import os
 import sys
 import json
 import util
-from sync import Sync, DIRECTION_G2J, DIRECTION_J2G, DIRECTION_BOTH
+from sync import Sync, DIRECTION_G2A
 import logging
 import server
 import anticrlf
@@ -26,7 +26,7 @@ def fail(msg):
 
 def direction_str_to_num(dstr):
     if dstr == "gh2asana":
-        return DIRECTION_G2J
+        return DIRECTION_G2A
     else:
         fail('Unknown direction argument "{direction}"!'.format(direction=dstr))
 

@@ -1,12 +1,18 @@
 [[source]]
-name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
+name = "pypi"
 
 [packages]
+bandit = "~=1.7.0"
+black = "~=21.0b"
+flake8 = "~=4.0.0"
 flask = "~=2.0.0"
+logging-formatter-anticrlf = "==1.2"
 requests = "~=2.26.0"
-jira = "~=3.0.0"
+asana = "~=4.0.10"
+
+[dev-packages]
 
 [requires]
-python_version = "3"
+python_version = "3.11"
