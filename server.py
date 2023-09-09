@@ -3,7 +3,7 @@ import json
 import hashlib
 import hmac
 from datetime import datetime
-import jiralib
+import asanalib
 import threading
 
 
@@ -37,50 +37,10 @@ def auth_is_valid(signature, request_body):
         ),
     )
 
-
-@app.route("/jira", methods=["POST"])
-def jira_webhook():
-    """Handle POST requests coming from JIRA, and pass a translated request to GitHub"""
-
-    if not hmac.compare_digest(
-        request.args.get("secret_token", "").encode("utf-8"), secret
-    ):
-        return jsonify({"code": 403, "error": "Unauthorized"}), 403
-
-    payload = json.loads(request.data.decode("utf-8"))
-    event = payload["webhookEvent"]
-    desc = payload["issue"]["fields"]["description"]
-    repo_id, _, _, _, _ = jiralib.parse_alert_info(desc)
-
-    app.logger.debug('Received JIRA webhook for event "{event}"'.format(event=event))
-
-    if repo_id is None:
-        app.logger.debug(
-            "Ignoring JIRA webhook for issue not related to a code scanning alert."
-        )
-        return jsonify({}), 200
-
-    with sync_lock:
-        # we only care about updates to issues
-        if event == jiralib.CREATE_EVENT:
-            sync.issue_created(desc)
-        elif event == jiralib.DELETE_EVENT:
-            sync.issue_deleted(desc)
-        elif event == jiralib.UPDATE_EVENT:
-            sync.issue_changed(desc)
-        else:
-            app.logger.debug(
-                'Ignoring JIRA webhook for event "{event}".'.format(event=event)
-            )
-            return jsonify({}), 200
-
-    return jsonify({}), 200
-
-
 @app.route("/github", methods=["POST"])
 def github_webhook():
     """
-    Handle POST requests coming from GitHub, and pass a translated request to JIRA
+    Handle POST requests coming from GitHub, and pass a translated request to ASANA
     By default, flask runs in single-threaded mode, so we don't need to worry about
     any race conditions.
     """

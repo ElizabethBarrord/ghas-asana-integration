@@ -1,69 +1,53 @@
-name: 'Sync GitHub Advanced Security and Jira'
-description: "This helps sync GHAS alerts to JIRA by creating an
+name: 'Sync GitHub Advanced Security and Asana'
+description: "This helps sync GHAS alerts to ASANA by creating an
               issue for each alert."
 inputs:
-  jira_url:
-    description: 'URL of the JIRA instance'
+  asana_url:
+    description: 'URL of the asana instance'
     required: true
-  jira_user:
-    description: 'JIRA account with the required permissions'
+  asana_token:
+    description: 'asana password or token'
     required: true
-  jira_token:
-    description: 'JIRA password or token'
+  asana_workspace:
+    description: 'asana workspace id'
     required: true
-  jira_project:
-    description: 'JIRA project key'
+  asana_project:
+    description: 'asana project id'
     required: true
-  jira_labels:
-    description: 'JIRA bug label(s). (e.g. valid format can be "red-team,blue-team,green-team", or "red-team")
-                  This tool will split the values entered by commas. Spaces in the double quotes
-                  will be respected and saved.'
-    required: false
   github_token:
     description: 'GitHub API token with the required permissions'
     required: false
     default: ${{ github.token }}
   sync_direction:
-    description: 'Which direction to synchronize in ("gh2jira", "jira2gh" or "both")'
+    description: 'Which direction to synchronize in ("gh2asana")'
     required: false
-    default: 'both'
-  issue_end_state:
-    description: 'Custom end state'
-    required: false
-    default: 'Done'
-  issue_reopen_state:
-    description: 'Custom reopen state'
-    required: false
-    default: 'To Do'
+    default: 'gh2asana'
 runs:
   using: composite
   steps:
-  - name: Run GitHub to Jira Sync
+  - name: Run GitHub to asana Sync
     working-directory: ${{ github.action_path }}
     shell: bash
     env:
       INPUTS_GITHUB_TOKEN: ${{ inputs.github_token }}
-      INPUTS_JIRA_URL: ${{ inputs.jira_url }}
-      INPUTS_JIRA_USER: ${{ inputs.jira_user }}
-      INPUTS_JIRA_TOKEN: ${{ inputs.jira_token }}
-      INPUTS_JIRA_PROJECT: ${{ inputs.jira_project }}
-      INPUTS_JIRA_LABELS: ${{ inputs.jira_labels }}
+      INPUTS_ASANA_URL: ${{ inputs.asana_url }}
+      INPUTS_ASANA_TOKEN: ${{ inputs.asana_token }}
+      INPUTS_ASANA_WORKSPACE: ${{ inputs.asana_workspace }}
+      INPUTS_ASANA_PROJECT: ${{ inputs.asana_project }}
+      INPUTS_ASANA_LABELS: ${{ inputs.asana_labels }}
       INPUTS_SYNC_DIRECTION: ${{ inputs.sync_direction }}
       INPUTS_ISSUE_END_STATE: ${{ inputs.issue_end_state }}
       INPUTS_ISSUE_REOPEN_STATE: ${{ inputs.issue_reopen_state }}
     run: |
       pip3 install -r requirements.txt
       REPOSITORY_NAME="$(echo "$GITHUB_REPOSITORY" | cut -d/ -f 2)"
-      ./gh2jira sync \
+      ./gh2asana sync \
         --gh-url "$GITHUB_API_URL" \
-        --gh-token "$INPUTS_GITHUB_TOKEN" \
+        --gh-token "$INPUT_GITHUB_TOKEN" \
         --gh-org "$GITHUB_REPOSITORY_OWNER" \
         --gh-repo "$REPOSITORY_NAME" \
-        --jira-url "$INPUTS_JIRA_URL" \
-        --jira-user "$INPUTS_JIRA_USER" \
-        --jira-token "$INPUTS_JIRA_TOKEN" \
-        --jira-project "$INPUTS_JIRA_PROJECT" \
-        --jira-labels "$INPUTS_JIRA_LABELS" \
-        --direction "$INPUTS_SYNC_DIRECTION" \
-        --issue-end-state "$INPUTS_ISSUE_END_STATE" \
-        --issue-reopen-state "$INPUTS_ISSUE_REOPEN_STATE"
+        --asana-url "$INPUT_ASANA_URL" \
+        --asana-token "$INPUT_ASANA_TOKEN" \
+        --asana-workspace "$INPUT_ASANA_WORKSPACE" \
+        --asana-project "$INPUT_ASANA_PROJECT" \
+        --direction "$INPUT_SYNC_DIRECTION" \

@@ -1,14 +1,11 @@
-from jira import JIRA
+from asana.rest import ApiException
+from pprint import pprint
 import re
 import util
 import logging
 import requests
 import json
-
-# JIRA Webhook events
-UPDATE_EVENT = "jira:issue_updated"
-CREATE_EVENT = "jira:issue_created"
-DELETE_EVENT = "jira:issue_deleted"
+import asana
 
 
 TITLE_PREFIXES = {
@@ -33,9 +30,9 @@ ALERT_KEY={alert_key}
 
 
 STATE_ISSUE_SUMMARY = "[Code Scanning Issue States]"
-STATE_ISSUE_KEY = util.make_key("gh2jira-state-issue")
+STATE_ISSUE_KEY = util.make_key("gh2asana-state-issue")
 STATE_ISSUE_TEMPLATE = """
-This issue was automatically generated and contains states required for the synchronization between GitHub and JIRA.
+This issue was automatically generated and contains states required for the synchronization between GitHub and ASANA.
 DO NOT MODIFY DESCRIPTION BELOW LINE.
 ISSUE_KEY={issue_key}
 """.format(
@@ -45,67 +42,26 @@ ISSUE_KEY={issue_key}
 logger = logging.getLogger(__name__)
 
 
-class Jira:
+class Asana:
     def __init__(self, url, user, token):
         self.url = url
         self.user = user
         self.token = token
-        self.j = JIRA(url, basic_auth=(user, token))
+        self.a = ASANA(url, basic_auth=(user, token))
 
     def auth(self):
         return self.user, self.token
 
-    def getProject(self, projectkey, endstate, reopenstate, labels):
-        return JiraProject(self, projectkey, endstate, reopenstate, labels)
-
-    def list_hooks(self):
-        resp = requests.get(
-            "{api_url}/rest/webhooks/1.0/webhook".format(api_url=self.url),
-            headers={"Content-Type": "application/json"},
-            auth=self.auth(),
-            timeout=util.REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-
-        for h in resp.json():
-            yield h
-
-    def create_hook(
-        self,
-        name,
-        url,
-        secret,
-        events=[CREATE_EVENT, DELETE_EVENT, UPDATE_EVENT],
-        filters={"issue-related-events-section": ""},
-        exclude_body=False,
-    ):
-        data = json.dumps(
-            {
-                "name": name,
-                "url": url + "?secret_token=" + secret,
-                "events": events,
-                "filters": filters,
-                "excludeBody": exclude_body,
-            }
-        )
-        resp = requests.post(
-            "{api_url}/rest/webhooks/1.0/webhook".format(api_url=self.url),
-            headers={"Content-Type": "application/json"},
-            data=data,
-            auth=self.auth(),
-            timeout=util.REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-
-        return resp.json()
+    def getProject(self, projectkey, endstate, reopenstate):
+        return AsanaProject(self, projectkey, endstate, reopenstate)
 
 
-class JiraProject:
-    def __init__(self, jira, projectkey, endstate, reopenstate, labels):
-        self.jira = jira
-        self.labels = labels.split(",") if labels else []
+class AsanaProject:
+    def __init__(self, asana, projectkey, workspaceid, endstate, reopenstate):
+        self.asana = asana
         self.projectkey = projectkey
-        self.j = self.jira.j
+        self.workspaceid = workspaceid
+        self.a = self.asana.a
         self.endstate = endstate
         self.reopenstate = reopenstate
 
@@ -113,8 +69,8 @@ class JiraProject:
         if issue_key != "-":
             return self.j.issue(issue_key)
 
-        issue_search = 'project={jira_project} and description ~ "{key}"'.format(
-            jira_project='"{}"'.format(self.projectkey), key=STATE_ISSUE_KEY
+        issue_search = 'project={asana_project} and description ~ "{key}"'.format(
+            asana_project='"{}"'.format(self.projectkey), key=STATE_ISSUE_KEY
         )
         issues = list(
             filter(
@@ -126,10 +82,10 @@ class JiraProject:
         if len(issues) == 0:
             return self.j.create_issue(
                 project=self.projectkey,
+                workspaceid=self.workspaceid,
                 summary=STATE_ISSUE_SUMMARY,
                 description=STATE_ISSUE_TEMPLATE,
-                issuetype={"name": "Bug"},
-                labels=self.labels,
+                data={"name": "GHAS Alert"},
             )
         elif len(issues) > 1:
             issues.sort(key=lambda i: i.id())  # keep the oldest issue
@@ -161,7 +117,7 @@ class JiraProject:
                 self.j.delete_attachment(a.id)
 
         # attach the new state file
-        self.jira.attach_file(
+        self.asana.attach_file(
             i.key, repo_id_to_fname(repo_id), util.state_to_json(state)
         )
 
@@ -176,22 +132,40 @@ class JiraProject:
         repo_key,
         alert_key,
     ):
-        raw = self.j.create_issue(
-            project=self.projectkey,
-            summary="{prefix} {short_desc} in {repo}".format(
-                prefix=TITLE_PREFIXES[alert_type], short_desc=short_desc, repo=repo_id
-            ),
-            description=DESC_TEMPLATE.format(
-                long_desc=long_desc,
-                alert_url=alert_url,
-                repo_id=repo_id,
-                alert_type=alert_type,
-                alert_num=alert_num,
-                repo_key=repo_key,
-                alert_key=alert_key,
-            ),
-            issuetype={"name": "Bug"},
-            labels=self.labels,
+        logger.info(
+            "hit create_issuse"
+            )
+        raw = self.a.create_issue(
+            configuration = asana.Configuration()
+            configuration.access_token = self.asana.token
+            configuration.host = self.asana.url
+            api_client = asana.ApiClient(configuration)
+            api_instance = asana.TasksApi(api_client)
+            body = asana.TasksBody({"name": "From Action", "workspace": self.workspaceid, projects: [self.projectkey]})
+            opt_fields = ["workspace","workspace.name"]
+
+            try:
+                # Create a task
+                api_response = api_instance.create_task(body, opt_fields=opt_fields)
+                pprint(api_response)
+            except ApiException as e:
+                print("Exception when calling TasksApi->create_task: %s\n" % e)
+
+
+            # project=self.projectkey,
+            # summary="{prefix} {short_desc} in {repo}".format(
+            #     prefix=TITLE_PREFIXES[alert_type], short_desc=short_desc, repo=repo_id
+            # ),
+            # notes=DESC_TEMPLATE.format(
+            #     long_desc=long_desc,
+            #     alert_url=alert_url,
+            #     repo_id=repo_id,
+            #     alert_type=alert_type,
+            #     alert_num=alert_num,
+            #     repo_key=repo_key,
+            #     alert_key=alert_key,
+            # ),
+            # issuetype={"name": "Bug"},
         )
         logger.info(
             "Created issue {issue_key} for alert {alert_num} in {repo_id}.".format(
@@ -207,37 +181,15 @@ class JiraProject:
             )
         )
 
-        return JiraIssue(self, raw)
-
-    def fetch_issues(self, key):
-        issue_search = 'project={jira_project} and description ~ "{key}"'.format(
-            jira_project='"{}"'.format(self.projectkey), key=key
-        )
-        issues = list(
-            filter(
-                lambda i: i.is_managed(),
-                [
-                    JiraIssue(self, raw)
-                    for raw in self.j.search_issues(issue_search, maxResults=0)
-                ],
-            )
-        )
-        logger.debug(
-            "Search {search} returned {num_results} results.".format(
-                search=issue_search, num_results=len(issues)
-            )
-        )
-        return issues
+        return AsanaIssue(self, raw)
 
 
-class JiraIssue:
-    def __init__(self, project, rawissue):
+class AsanaIssue:
+    def __init__(self, project, workspace rawissue):
         self.project = project
+        self.workspace = workspace
         self.rawissue = rawissue
-        self.j = self.project.j
-        self.endstate = self.project.endstate
-        self.reopenstate = self.project.reopenstate
-        self.labels = self.project.labels
+        self.a = self.project.a
 
     def is_managed(self):
         if parse_alert_info(self.rawissue.fields.description)[0] is None:
@@ -268,44 +220,6 @@ class JiraIssue:
 
     def parse_state(self, raw_state):
         return raw_state != self.endstate
-
-    def transition(self, transition):
-
-        if (
-            self.get_state()
-            and transition == self.reopenstate
-            or not self.get_state()
-            and transition == self.endstate
-        ):
-            # nothing to do
-            return
-
-        jira_transitions = {
-            t["name"]: t["id"] for t in self.j.transitions(self.rawissue)
-        }
-        if transition not in jira_transitions:
-            logger.error(
-                'Transition "{transition}" not available for {issue_key}. Valid transitions: {jira_transitions}'.format(
-                    transition=transition,
-                    issue_key=self.rawissue.key,
-                    jira_transitions=list(jira_transitions),
-                )
-            )
-            raise Exception("Invalid JIRA transition")
-
-        self.j.transition_issue(self.rawissue, jira_transitions[transition])
-
-        action = "Reopening" if transition == self.reopenstate else "Closing"
-
-        logger.info(
-            "{action} issue {issue_key}".format(
-                action=action, issue_key=self.rawissue.key
-            )
-        )
-
-    def persist_labels(self, labels):
-        if labels:
-            self.rawissue.update(fields={"labels": self.labels})
 
 
 def parse_alert_info(desc):
