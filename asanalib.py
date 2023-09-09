@@ -67,7 +67,7 @@ class AsanaProject:
 
     def get_state_issue(self, issue_key="-"):
         if issue_key != "-":
-            return self.j.issue(issue_key)
+            return self.a.issue(issue_key)
 
         issue_search = 'project={asana_project} and description ~ "{key}"'.format(
             asana_project='"{}"'.format(self.projectkey), key=STATE_ISSUE_KEY
@@ -75,12 +75,12 @@ class AsanaProject:
         issues = list(
             filter(
                 lambda i: i.fields.summary == STATE_ISSUE_SUMMARY,
-                self.j.search_issues(issue_search, maxResults=0),
+                self.a.search_issues(issue_search, maxResults=0),
             )
         )
 
         if len(issues) == 0:
-            return self.j.create_issue(
+            return self.a.create_issue(
                 project=self.projectkey,
                 workspaceid=self.workspaceid,
                 summary=STATE_ISSUE_SUMMARY,
@@ -97,7 +97,7 @@ class AsanaProject:
         # When fetching issues via the search_issues() function, we somehow
         # cannot access the attachments. To do that, we need to fetch the issue
         # via the issue() function first.
-        return self.j.issue(i.key)
+        return self.a.issue(i.key)
 
     def fetch_repo_state(self, repo_id, issue_key="-"):
         i = self.get_state_issue(issue_key)
@@ -114,74 +114,33 @@ class AsanaProject:
         # remove previous state files for the given repo_id
         for a in i.fields.attachment:
             if a.filename == repo_id_to_fname(repo_id):
-                self.j.delete_attachment(a.id)
+                self.a.delete_attachment(a.id)
 
         # attach the new state file
         self.asana.attach_file(
             i.key, repo_id_to_fname(repo_id), util.state_to_json(state)
         )
 
-    def create_issue(
-        self,
-        repo_id,
-        short_desc,
-        long_desc,
-        alert_url,
-        alert_type,
-        alert_num,
-        repo_key,
-        alert_key,
-    ):
-        logger.info(
-            "hit create_issuse"
-            )
-        raw = self.a.create_issue(
-            configuration = asana.Configuration()
-            configuration.access_token = self.asana.token
-            configuration.host = self.asana.url
-            api_client = asana.ApiClient(configuration)
-            api_instance = asana.TasksApi(api_client)
-            body = asana.TasksBody({"name": "From Action", "workspace": self.workspaceid, projects: [self.projectkey]})
-            opt_fields = ["workspace","workspace.name"]
-
-            try:
-                # Create a task
-                api_response = api_instance.create_task(body, opt_fields=opt_fields)
-                pprint(api_response)
-            except ApiException as e:
-                print("Exception when calling TasksApi->create_task: %s\n" % e)
-
-
-            # project=self.projectkey,
-            # summary="{prefix} {short_desc} in {repo}".format(
-            #     prefix=TITLE_PREFIXES[alert_type], short_desc=short_desc, repo=repo_id
-            # ),
-            # notes=DESC_TEMPLATE.format(
-            #     long_desc=long_desc,
-            #     alert_url=alert_url,
-            #     repo_id=repo_id,
-            #     alert_type=alert_type,
-            #     alert_num=alert_num,
-            #     repo_key=repo_key,
-            #     alert_key=alert_key,
-            # ),
-            # issuetype={"name": "Bug"},
+    # create issue in asana using asana api
+    def create_issue(self, repo_id, alert_num, repo_key, alert_key, alert_type, alert_url, long_desc):
+        title = TITLE_PREFIXES[alert_type] + " " + long_desc
+        desc = DESC_TEMPLATE.format(
+            repo_id=repo_id,
+            alert_type=alert_type,
+            alert_num=alert_num,
+            repo_key=repo_key,
+            alert_key=alert_key,
+            alert_url=alert_url,
+            long_desc=long_desc,
         )
-        logger.info(
-            "Created issue {issue_key} for alert {alert_num} in {repo_id}.".format(
-                issue_key=raw.key, alert_num=alert_num, repo_id=repo_id
-            )
-        )
-        logger.info(
-            "Created issue {issue_key} for {alert_type} {alert_num} in {repo_id}.".format(
-                issue_key=raw.key,
-                alert_type=alert_type,
-                alert_num=alert_num,
-                repo_id=repo_id,
-            )
+        return self.a.create_issue(
+            project=self.projectkey,
+            workspaceid=self.workspaceid,
+            summary=title,
+            description=desc,
+            data={"name": "GHAS Alert"},
         )
 
-        return AsanaIssue(self, raw)
 
 
 class AsanaIssue:
