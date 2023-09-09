@@ -38,7 +38,3 @@ Draft pull requests are also welcome to get feedback early on, or if there is so
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)
 - [Using Pull Requests](https://help.github.com/articles/about-pull-requests/)
 - [GitHub Help](https://help.github.com)
-
-[pulls]: https://github.com/github/codescanning-jira-integration/pulls
-[pr]: https://github.com/github/codescanning-jira-integration/compare
-[fork]: https://github.com/github/codescanning-jira-integration/fork

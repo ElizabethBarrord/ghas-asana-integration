@@ -1,0 +1,15 @@
+name: GitHub to Asana
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Asana Task
+        uses: ./
+        with:
+          asana-url: https://app.asana.com/api/1.0
+          asana-token: ${{ secrets.ASANA_PAT }}
+          asana-workspace-id: ${{ secrets.ASANA_WORKSPACE_ID }}
+          asana-project-id: ${{ secrets.ASANA_PROJECT_ID }}
