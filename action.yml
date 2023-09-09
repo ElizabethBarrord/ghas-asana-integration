@@ -34,10 +34,7 @@ runs:
       INPUTS_ASANA_TOKEN: ${{ inputs.asana_token }}
       INPUTS_ASANA_WORKSPACE: ${{ inputs.asana_workspace }}
       INPUTS_ASANA_PROJECT: ${{ inputs.asana_project }}
-      INPUTS_ASANA_LABELS: ${{ inputs.asana_labels }}
       INPUTS_SYNC_DIRECTION: ${{ inputs.sync_direction }}
-      INPUTS_ISSUE_END_STATE: ${{ inputs.issue_end_state }}
-      INPUTS_ISSUE_REOPEN_STATE: ${{ inputs.issue_reopen_state }}
     run: |
       pip3 install -r requirements.txt
       REPOSITORY_NAME="$(echo "$GITHUB_REPOSITORY" | cut -d/ -f 2)"

@@ -7,7 +7,6 @@ import json
 import util
 from sync import Sync, DIRECTION_G2A
 import logging
-import server
 import anticrlf
 
 root = logging.getLogger()
@@ -57,22 +56,12 @@ def sync(args):
     asana_project = asana.getProject(
         args.asana_project,
         args.asana_workspace,
-        args.issue_end_state,
-        args.issue_reopen_state,
     )
     repo_id = args.gh_org + "/" + args.gh_repo
+    
+    state = {}
 
-    if args.state_file:
-        if args.state_issue:
-            fail("--state-file and --state-issue are mutually exclusive!")
-
-        state = util.state_from_file(args.state_file)
-    elif args.state_issue:
-        state = asana_project.fetch_repo_state(repo_id, args.state_issue)
-    else:
-        state = {}
-
-    s = Sync(github, asana_project, direction=direction_str_to_num(args.direction))
+    s = Sync(github, asana_project, asana_workspace, direction=direction_str_to_num(args.direction))
     s.sync_repo(repo_id, states=state)
 
     if args.state_file:
@@ -92,14 +81,13 @@ def main():
     )
     credential_base.add_argument(
         "--gh-token",
-        help="GitHub API token. Alternatively, the GH2JIRA_GH_TOKEN may be set.",
-        default=os.getenv("GH2JIRA_GH_TOKEN"),
+        help="GitHub API token. Alternatively, the GH2ASANA_GH_TOKEN may be set.",
+        default=os.getenv("GH2ASANA_GH_TOKEN"),
     )
-    credential_base.add_argument("--asana-url", help="URL of JIRA instance")
+    credential_base.add_argument("--asana-url", help="URL of ASANA instance")
     credential_base.add_argument(
         "--asana-token",
-        help="JIRA password. Alternatively, the GH2JIRA_JIRA_TOKEN may be set.",
-        default=os.getenv("GH2JIRA_JIRA_TOKEN"),
+        help="ASANA password. Alternatively, the GH2ASANA_ASANA_TOKEN may be set."
     )
     credential_base.add_argument("--asana-project", help="Asana project key")
 
@@ -113,51 +101,25 @@ def main():
         default="both",
     )
 
-    issue_state_base = argparse.ArgumentParser(add_help=False)
-    issue_state_base.add_argument(
-        "--issue-end-state",
-        help="Custom end state (e.g. Closed) Done by default",
-        default="Done",
-    )
-    issue_state_base.add_argument(
-        "--issue-reopen-state",
-        help="Custom reopen state (e.g. In Progress) To Do by default",
-        default="To Do",
-    )
-
     parser = argparse.ArgumentParser(prog="gh2asana")
     subparsers = parser.add_subparsers()
 
     # sync
     sync_parser = subparsers.add_parser(
         "sync",
-        parents=[credential_base, direction_base, issue_state_base],
-        help="Synchronize GitHub alerts and JIRA tickets for a given repository",
-        description="Synchronize GitHub alerts and JIRA tickets for a given repository",
+        parents=[credential_base, direction_base],
+        help="Synchronize GitHub alerts and ASANA tickets for a given repository",
+        description="Synchronize GitHub alerts and ASANA tickets for a given repository",
     )
-    sync_parser.add_argument(
-        "--state-file",
-        help="File holding the current states of all alerts. The program will create the"
-        + " file if it doesn't exist and update it after each run.",
-        default=None,
-    )
-    sync_parser.add_argument(
-        "--state-issue",
-        help="The key of the issue holding the current states of all alerts. The program "
-        + 'will create the issue if "-" is given as the argument. The issue will be '
-        + "updated after each run.",
-        default=None,
-    )
-    
 
     def print_usage(args):
         print(parser.format_usage())
 
     parser.set_defaults(func=print_usage)
+    print("HIThere")
     args = parser.parse_args()
 
     # run the given action
     args.func(args)
-
 
 main()

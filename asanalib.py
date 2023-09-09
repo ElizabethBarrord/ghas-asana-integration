@@ -52,15 +52,15 @@ class Asana:
     def auth(self):
         return self.user, self.token
 
-    def getProject(self, projectkey, endstate, reopenstate):
-        return AsanaProject(self, projectkey, endstate, reopenstate)
+    def getProject(self, projectkey):
+        return AsanaProject(self, projectkey)
 
 
 class AsanaProject:
-    def __init__(self, asana, projectkey, workspaceid, endstate, reopenstate):
+    def __init__(self, asana, projectkey, workspace):
         self.asana = asana
         self.projectkey = projectkey
-        self.workspaceid = workspaceid
+        self.workspace = workspace
         self.a = self.asana.a
         self.endstate = endstate
         self.reopenstate = reopenstate
@@ -82,7 +82,7 @@ class AsanaProject:
         if len(issues) == 0:
             return self.a.create_issue(
                 project=self.projectkey,
-                workspaceid=self.workspaceid,
+                workspace=self.workspace,
                 summary=STATE_ISSUE_SUMMARY,
                 description=STATE_ISSUE_TEMPLATE,
                 data={"name": "GHAS Alert"},
@@ -135,7 +135,7 @@ class AsanaProject:
         )
         return self.a.create_issue(
             project=self.projectkey,
-            workspaceid=self.workspaceid,
+            workspace=self.workspace,
             summary=title,
             description=desc,
             data={"name": "GHAS Alert"},
