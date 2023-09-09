@@ -30,30 +30,6 @@ def direction_str_to_num(dstr):
     else:
         fail('Unknown direction argument "{direction}"!'.format(direction=dstr))
 
-
-def serve(args):
-    if not args.gh_url or not args.asana_url:
-        fail("Both GitHub and ASANA URL have to be specified!")
-
-    if not args.gh_token:
-        fail("No GitHub token specified!")
-
-    if not args.asana_token:
-        fail("No asana credentials specified!")
-
-    if not args.asana_project:
-        fail("No asana project specified!")
-
-    github = ghlib.GitHub(args.gh_url, args.gh_token)
-    asana = asanalib.Asana(args.asana_url, args.asana_token)
-    s = Sync(
-        github,
-        asana.getProject(args.asana_project),
-        direction=direction_str_to_num(args.direction),
-    )
-    server.run_server(s, args.secret, port=args.port)
-
-
 def sync(args):
     if not args.gh_url or not args.asana_url:
         fail("Both GitHub and ASANA URL have to be specified!")
@@ -151,18 +127,6 @@ def main():
 
     parser = argparse.ArgumentParser(prog="gh2asana")
     subparsers = parser.add_subparsers()
-
-    # serve
-    serve_parser = subparsers.add_parser(
-        "serve",
-        parents=[credential_base, direction_base, issue_state_base],
-        help="Spawn a webserver which keeps GitHub alerts and JIRA tickets in sync",
-        description="Spawn a webserver which keeps GitHub alerts and JIRA tickets in sync",
-    )
-    serve_parser.add_argument(
-        "--port", help="The port the server will listen on", default=5000
-    )
-    serve_parser.set_defaults(func=serve)
 
     # sync
     sync_parser = subparsers.add_parser(

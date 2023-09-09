@@ -11,7 +11,9 @@ jobs:
       - name: Create Asana Task
         uses: ./
         with:
-          asana_url: https://app.asana.com/api/1.0
+          asana_url: 'https://app.asana.com/api/1.0'
           asana_token: ${{ secrets.ASANA_PAT }}
           asana_workspace: ${{ secrets.ASANA_WORKSPACE_ID }}
           asana_project: ${{ secrets.ASANA_PROJECT_ID }}
+          github_token: '${{ secrets.PERSONAL_ACCESS_TOKEN }}'
+          sync_direction: 'gh2asana'
