@@ -11,7 +11,7 @@ jobs:
       - name: Create Asana Task
         uses: ./
         with:
-          asana-url: https://app.asana.com/api/1.0
-          asana-token: ${{ secrets.ASANA_PAT }}
-          asana-workspace: ${{ secrets.ASANA_WORKSPACE_ID }}
-          asana-project: ${{ secrets.ASANA_PROJECT_ID }}
+          asana_url: https://app.asana.com/api/1.0
+          asana_token: ${{ secrets.ASANA_PAT }}
+          asana_workspace: ${{ secrets.ASANA_WORKSPACE_ID }}
+          asana_project: ${{ secrets.ASANA_PROJECT_ID }}
