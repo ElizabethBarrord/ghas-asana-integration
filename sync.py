@@ -95,7 +95,7 @@ class Sync:
         for akey, (alert, issues) in pairs.items():
             past_state = states.get(akey, None)
             if alert is None or alert.get_state() != past_state:
-                d = DIRECTION_G2J
+                d = DIRECTION_G2A
             else:
                 d = DIRECTION_J2G
 
