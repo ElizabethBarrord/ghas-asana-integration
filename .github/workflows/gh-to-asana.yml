@@ -15,5 +15,5 @@ jobs:
           asana_token: ${{ secrets.ASANA_PAT }}
           asana_workspace: ${{ secrets.ASANA_WORKSPACE_ID }}
           asana_project: ${{ secrets.ASANA_PROJECT_ID }}
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.GH_PAT }}
           sync_direction: 'gh2asana'
