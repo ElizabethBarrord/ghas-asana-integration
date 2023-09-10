@@ -79,12 +79,12 @@ class Sync:
         for a in itertools.chain(repo.get_secrets(), repo.get_alerts()):
             pairs[a.get_key()] = (a, [])
 
-        # gather issues
-        for i in self.jira.fetch_issues(repo.get_key()):
-            _, _, _, alert_key, _ = i.get_alert_info()
-            if alert_key not in pairs:
-                pairs[alert_key] = (None, [])
-            pairs[alert_key][1].append(i)
+        # # gather issues
+        # for i in self.jira.fetch_issues(repo.get_key()):
+        #     _, _, _, alert_key, _ = i.get_alert_info()
+        #     if alert_key not in pairs:
+        #         pairs[alert_key] = (None, [])
+        #     pairs[alert_key][1].append(i)
 
         # remove unused states
         for k in list(states.keys()):
