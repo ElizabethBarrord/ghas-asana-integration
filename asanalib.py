@@ -43,17 +43,18 @@ logger = logging.getLogger(__name__)
 
 
 class Asana:
-    def __init__(self, url, user, token):
+    def __init__(self, url, workspace, project, token):
         self.url = url
-        self.user = user
+        self.workspace = workspace
+        self.project = project
         self.token = token
-        self.a = ASANA(url, basic_auth=(user, token))
+        # self.a = Asana(url, workspace, project, token)
 
     def auth(self):
-        return self.user, self.token
+        return self.workspace, self.token
 
-    def getProject(self, projectkey):
-        return AsanaProject(self, projectkey)
+    # def getProject(self, projectkey):
+    #     return AsanaProject(self, projectkey)
 
 
 class AsanaProject:

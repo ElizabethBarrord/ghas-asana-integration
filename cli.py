@@ -1,5 +1,6 @@
 import argparse
 import ghlib
+import asanalib
 import os
 import sys
 import json
@@ -46,7 +47,7 @@ def serve(args):
         fail("No Webhook secret specified!")
 
     github = ghlib.GitHub(args.gh_url, args.gh_token)
-    asana = asanalib.Asana(args.asana_url, args.asana_user, args.asana_token)
+    asana = asanalib.Asana(args.asana_url, args.asana_workspace, args.asana_project, args.asana_token)
     s = Sync(
         github,
         asana.getProject(args.asana_project, args.asana_labels),
@@ -62,7 +63,7 @@ def sync(args):
     if not args.gh_token:
         fail("No GitHub credentials specified!")
 
-    if not args.asana_user or not args.asana_token:
+    if not args.asana_workspace or not args.asana_token:
         fail("No ASANA credentials specified!")
 
     if not args.asana_project:
@@ -78,13 +79,10 @@ def sync(args):
         fail("No GitHub repository specified!")
 
     github = ghlib.GitHub(args.gh_url, args.gh_token)
-    asana = asanalib.Jira(args.asana_url, args.asana_workspace, args.asana_token)
-    asana_project = asana.getProject(
-        args.asana_project,
-        args.issue_end_state,
-        args.issue_reopen_state,
-        args.asana_labels,
-    )
+    asana = asanalib.Asana(args.asana_url, args.asana_workspace, args.asana_project, args.asana_token)
+    # asana_project = asana.getProject(
+    #     args.asana_project
+    # )
     repo_id = args.gh_org + "/" + args.gh_repo
 
     if args.state_file:
@@ -97,7 +95,7 @@ def sync(args):
     else:
         state = {}
 
-    s = Sync(github, asana_project, asana_workspace, direction=direction_str_to_num(args.direction))
+    s = Sync(github, args.asana_project, args.asana_workspace, direction=direction_str_to_num(args.direction))
     s.sync_repo(repo_id, states=state)
 
     if args.state_file:
@@ -138,9 +136,9 @@ def install_hooks(args):
 
     # user wants to install a ASANA hook
     if args.asana_url:
-        if not args.asana_user or not args.asana_token:
+        if not args.asana_workspace or not args.asana_token:
             fail("No ASANA credentials specified!")
-        asana = asanalib.Asana(args.asana_url, args.asana_user, args.asana_token)
+        asana = asanalib.Asana(args.asana_url, args.asana_workspace, args.asana_token)
         asana.create_hook("github_asana_synchronization_hook", args.hook_url, args.secret)
 
 
@@ -169,10 +167,10 @@ def list_hooks(args):
 
     # user wants to list ASANA hooks
     if args.asana_url:
-        if not args.asana_user or not args.asana_token:
+        if not args.asana_workspace or not args.asana_token:
             fail("No ASANA credentials specified!")
 
-        asana = asanalib.Jira(args.asana_url, args.asana_user, args.asana_token)
+        asana = asanalib.Asana(args.asana_url, args.asana_workspace, args.asana_token)
 
         for h in asana.list_hooks():
             print(json.dumps(h, indent=4))
@@ -192,7 +190,7 @@ def main():
         default=os.getenv("GH2ASANA_GH_TOKEN"),
     )
     credential_base.add_argument("--asana-url", help="URL of ASANA instance")
-    credential_base.add_argument("--asana-user", help="ASANA user name")
+    credential_base.add_argument("--asana-workspace", help="ASANA workspace")
     credential_base.add_argument(
         "--asana-token",
         help="ASANA password. Alternatively, the GH2ASANA_ASANA_TOKEN may be set.",

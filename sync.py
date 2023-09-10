@@ -65,3 +65,43 @@ class Sync:
             alert.adjust_state(issue.get_state())
             issue.persist_labels(self.labels)
             return issue.get_state()
+
+    def sync_repo(self, repo_id, states=None):
+        logger.info(
+            "Performing full sync on repository {repo_id}...".format(repo_id=repo_id)
+        )
+
+        repo = self.github.getRepository(repo_id)
+        states = {} if states is None else states
+        pairs = {}
+
+        # gather alerts
+        for a in itertools.chain(repo.get_secrets(), repo.get_alerts()):
+            pairs[a.get_key()] = (a, [])
+
+        # gather issues
+        for i in self.jira.fetch_issues(repo.get_key()):
+            _, _, _, alert_key, _ = i.get_alert_info()
+            if alert_key not in pairs:
+                pairs[alert_key] = (None, [])
+            pairs[alert_key][1].append(i)
+
+        # remove unused states
+        for k in list(states.keys()):
+            if k not in pairs:
+                del states[k]
+
+        # perform sync
+        for akey, (alert, issues) in pairs.items():
+            past_state = states.get(akey, None)
+            if alert is None or alert.get_state() != past_state:
+                d = DIRECTION_G2J
+            else:
+                d = DIRECTION_J2G
+
+            new_state = self.sync(alert, issues, d)
+
+            if new_state is None:
+                states.pop(akey, None)
+            else:
+                states[akey] = new_state
