@@ -36,7 +36,7 @@ def serve(args):
     if not args.gh_token:
         fail("No GitHub token specified!")
 
-    if not args.asana_user or not args.asana_token:
+    if not args.asana_token:
         fail("No ASANA credentials specified!")
 
     if not args.asana_project:
@@ -68,6 +68,9 @@ def sync(args):
     if not args.asana_project:
         fail("No ASANA project specified!")
 
+    if not args.asana_workspace:
+        fail("No ASANA workspace specified!")
+
     if not args.gh_org:
         fail("No GitHub organization specified!")
 
@@ -75,7 +78,7 @@ def sync(args):
         fail("No GitHub repository specified!")
 
     github = ghlib.GitHub(args.gh_url, args.gh_token)
-    asana = asanalib.Jira(args.asana_url, args.asana_user, args.asana_token)
+    asana = asanalib.Jira(args.asana_url, args.asana_workspace, args.asana_token)
     asana_project = asana.getProject(
         args.asana_project,
         args.issue_end_state,
@@ -94,7 +97,7 @@ def sync(args):
     else:
         state = {}
 
-    s = Sync(github, asana_project, direction=direction_str_to_num(args.direction))
+    s = Sync(github, asana_project, asana_workspace, direction=direction_str_to_num(args.direction))
     s.sync_repo(repo_id, states=state)
 
     if args.state_file:

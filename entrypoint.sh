@@ -10,4 +10,3 @@ cd / && pipenv run /gh2asana sync \
                             --asana-workspace "$INPUT_ASANA_WORKSPACE" \
                             --asana-project "$INPUT_ASANA_PROJECT" \
                             --direction "$INPUT_SYNC_DIRECTION" \
-
