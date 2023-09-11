@@ -43,15 +43,15 @@ logger = logging.getLogger(__name__)
 
 
 class Asana:
-    def __init__(self, url, workspace, project, token):
+    def __init__(self, url, token):
         self.url = url
-        self.workspace = workspace
-        self.project = project
         self.token = token
-        # self.a = Asana(url, workspace, project, token)
+        self.configuration = asana.Configuration()
+        self.configuration.access_token = token
+        self.client = asana.ApiClient(self.configuration)
 
     def auth(self):
-        return self.workspace, self.token
+        return self.token
 
     # def getProject(self, projectkey):
     #     return AsanaProject(self, projectkey)
@@ -62,85 +62,126 @@ class AsanaProject:
         self.asana = asana
         self.projectkey = projectkey
         self.workspace = workspace
-        self.a = self.asana.a
-        self.endstate = endstate
-        self.reopenstate = reopenstate
 
-    def get_state_issue(self, issue_key="-"):
-        if issue_key != "-":
-            return self.a.issue(issue_key)
+    # def get_state_issue(self, issue_key="-"):
+    #     if issue_key != "-":
+    #         return self.a.issue(issue_key)
 
-        issue_search = 'project={asana_project} and description ~ "{key}"'.format(
-            asana_project='"{}"'.format(self.projectkey), key=STATE_ISSUE_KEY
-        )
-        issues = list(
-            filter(
-                lambda i: i.fields.summary == STATE_ISSUE_SUMMARY,
-                self.a.search_issues(issue_search, maxResults=0),
-            )
-        )
+    #     issue_search = 'project={asana_project} and description ~ "{key}"'.format(
+    #         asana_project='"{}"'.format(self.projectkey), key=STATE_ISSUE_KEY
+    #     )
+    #     issues = list(
+    #         filter(
+    #             lambda i: i.fields.summary == STATE_ISSUE_SUMMARY,
+    #             self.a.fetch_issues(issue_search, maxResults=0),
+    #         )
+    #     )
 
-        if len(issues) == 0:
-            return self.a.create_issue(
-                project=self.projectkey,
-                workspace=self.workspace,
-                summary=STATE_ISSUE_SUMMARY,
-                description=STATE_ISSUE_TEMPLATE,
-                data={"name": "GHAS Alert"},
-            )
-        elif len(issues) > 1:
-            issues.sort(key=lambda i: i.id())  # keep the oldest issue
-            for i in issues[1:]:
-                i.delete()
+    #     if len(issues) == 0:
+    #         return self.a.create_issue(
+    #             project=self.projectkey,
+    #             workspace=self.workspace,
+    #             summary=STATE_ISSUE_SUMMARY,
+    #             description=STATE_ISSUE_TEMPLATE,
+    #             data={"name": "GHAS Alert"},
+    #         )
+    #     elif len(issues) > 1:
+    #         issues.sort(key=lambda i: i.id())  # keep the oldest issue
+    #         for i in issues[1:]:
+    #             i.delete()
 
-        i = issues[0]
+    #     i = issues[0]
 
-        # When fetching issues via the search_issues() function, we somehow
-        # cannot access the attachments. To do that, we need to fetch the issue
-        # via the issue() function first.
-        return self.a.issue(i.key)
+    #     # When fetching issues via the search_issues() function, we somehow
+    #     # cannot access the attachments. To do that, we need to fetch the issue
+    #     # via the issue() function first.
+    #     return self.a.issue(i.key)
 
-    def fetch_repo_state(self, repo_id, issue_key="-"):
-        i = self.get_state_issue(issue_key)
+    # def fetch_repo_state(self, repo_id, issue_key="-"):
+    #     i = self.get_state_issue(issue_key)
 
-        for a in i.fields.attachment:
-            if a.filename == repo_id_to_fname(repo_id):
-                return util.state_from_json(a.get())
+    #     for a in i.fields.attachment:
+    #         if a.filename == repo_id_to_fname(repo_id):
+    #             return util.state_from_json(a.get())
 
-        return {}
+    #     return {}
 
-    def save_repo_state(self, repo_id, state, issue_key="-"):
-        i = self.get_state_issue(issue_key)
+    # def save_repo_state(self, repo_id, state, issue_key="-"):
+    #     i = self.get_state_issue(issue_key)
 
-        # remove previous state files for the given repo_id
-        for a in i.fields.attachment:
-            if a.filename == repo_id_to_fname(repo_id):
-                self.a.delete_attachment(a.id)
+    #     # remove previous state files for the given repo_id
+    #     for a in i.fields.attachment:
+    #         if a.filename == repo_id_to_fname(repo_id):
+    #             self.a.delete_attachment(a.id)
 
-        # attach the new state file
-        self.asana.attach_file(
-            i.key, repo_id_to_fname(repo_id), util.state_to_json(state)
-        )
+    #     # attach the new state file
+    #     self.asana.attach_file(
+    #         i.key, repo_id_to_fname(repo_id), util.state_to_json(state)
+    #     )
 
     # create issue in asana using asana api
-    def create_issue(self, repo_id, alert_num, repo_key, alert_key, alert_type, alert_url, long_desc):
-        title = TITLE_PREFIXES[alert_type] + " " + long_desc
-        desc = DESC_TEMPLATE.format(
-            repo_id=repo_id,
-            alert_type=alert_type,
-            alert_num=alert_num,
-            repo_key=repo_key,
-            alert_key=alert_key,
-            alert_url=alert_url,
-            long_desc=long_desc,
+    def create_issue(
+        self,
+        repo_id,
+        short_desc,
+        long_desc,
+        alert_url,
+        alert_type,
+        alert_num,
+        repo_key,
+        alert_key,
+        ):
+        try:
+            title = TITLE_PREFIXES[alert_type] + " " + long_desc
+            desc = DESC_TEMPLATE.format(
+                repo_id=repo_id,
+                alert_type=alert_type,
+                alert_num=alert_num,
+                repo_key=repo_key,
+                alert_key=alert_key,
+                alert_url=alert_url,
+                long_desc=long_desc,
+            )
+            api_instance = asana.TasksApi(self.asana.client)
+            project = self.projectkey # str | The project in which to search for the task.
+            workspace = self.workspace # str | The workspace or organization in which to search for the task.
+            body = asana.TasksBody({"workspace": workspace,"name":title, "projects":["1205454322162505"],"notes":desc}) # TasksBody | The task to create.
+            # opt_fields = ["projects","projects.name"]
+            api_response = api_instance.create_task(body)
+            pprint(api_response)
+        except ApiException as e:
+            print("Exception when calling TasksApi->get_tasks: %s\n" % e)
+
+
+    def fetch_issues(self, key):
+        
+        try:
+            api_instance = asana.TasksApi(self.asana.client)
+            project = self.projectkey # str | The project in which to search for the task.
+            workspace = self.workspace # str | The workspace or organization in which to search for the task.
+            api_response = api_instance.get_tasks(project=project, workspace=workspace)
+            pprint(api_response)
+        except ApiException as e:
+            print("Exception when calling TasksApi->get_tasks: %s\n" % e)
+
+        # issue_search = 'project={jira_project} and description ~ "{key}"'.format(
+        #     jira_project='"{}"'.format(self.projectkey), key=key
+        # )
+        # issues = list(
+        #     filter(
+        #         lambda i: i.is_managed(),
+        #         [
+        #             JiraIssue(self, raw)
+        #             for raw in self.j.search_issues(issue_search, maxResults=0)
+        #         ],
+        #     )
+        # )
+        logger.debug(
+            "Search {search} returned {num_results} results.".format(
+                search=issue_search, num_results=len(issues)
+            )
         )
-        return self.a.create_issue(
-            project=self.projectkey,
-            workspace=self.workspace,
-            summary=title,
-            description=desc,
-            data={"name": "GHAS Alert"},
-        )
+        return issues
 
 
 

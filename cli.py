@@ -47,10 +47,13 @@ def serve(args):
         fail("No Webhook secret specified!")
 
     github = ghlib.GitHub(args.gh_url, args.gh_token)
-    asana = asanalib.Asana(args.asana_url, args.asana_workspace, args.asana_project, args.asana_token)
+    asana = asanalib.Asana(args.asana_url, args.asana_token)
+    asana_project = asanalib.AsanaProject(asana, args.asana_project, args.asana_workspace)
     s = Sync(
         github,
-        asana.getProject(args.asana_project, args.asana_labels),
+        asana,
+        asana_project,
+        args.asana_workspace,
         direction=direction_str_to_num(args.direction),
     )
     server.run_server(s, args.secret, port=args.port)
@@ -79,29 +82,14 @@ def sync(args):
         fail("No GitHub repository specified!")
 
     github = ghlib.GitHub(args.gh_url, args.gh_token)
-    asana = asanalib.Asana(args.asana_url, args.asana_workspace, args.asana_project, args.asana_token)
-    # asana_project = asana.getProject(
-    #     args.asana_project
-    # )
+    asana = asanalib.Asana(args.asana_url, args.asana_token)
+    asana_project = asanalib.AsanaProject(asana, args.asana_project, args.asana_workspace)
+
     repo_id = args.gh_org + "/" + args.gh_repo
 
-    if args.state_file:
-        if args.state_issue:
-            fail("--state-file and --state-issue are mutually exclusive!")
 
-        state = util.state_from_file(args.state_file)
-    elif args.state_issue:
-        state = asana_project.fetch_repo_state(repo_id, args.state_issue)
-    else:
-        state = {}
-
-    s = Sync(github, args.asana_project, args.asana_workspace, direction=direction_str_to_num(args.direction))
-    s.sync_repo(repo_id, states=state)
-
-    if args.state_file:
-        util.state_to_file(args.state_file, state)
-    elif args.state_issue:
-        asana_project.save_repo_state(repo_id, state, args.state_issue)
+    s = Sync(github, asana, asana_project, args.asana_workspace, direction=direction_str_to_num(args.direction))
+    s.sync_repo(repo_id)
 
 
 def check_hooks(args):
