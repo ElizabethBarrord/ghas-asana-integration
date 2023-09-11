@@ -3,7 +3,7 @@ name: GitHub to Asana
 on: workflow_dispatch
 
 jobs:
-  build:
+  create-asana-ticket:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
